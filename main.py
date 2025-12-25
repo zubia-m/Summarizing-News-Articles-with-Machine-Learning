@@ -1,101 +1,61 @@
-# import nltk
-# nltk.download('punkt') Install these
-# nltk.download('all')
-
-# pip install nltk
-# pip install textblob
-# pip install newspaper3k
-
-
-import tkinter as tk
-from textblob import TextBlob  
+from flask import Flask, render_template, request, redirect, url_for
+from textblob import TextBlob
 from newspaper import Article
+from bs4 import BeautifulSoup
 
-def summarize():
-    url=utext.get('1.0', "end").strip()
+app = Flask(__name__)
 
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        url = request.form.get("url")
+        data = {}
 
-    article = Article(url)
+        try:
+            article = Article(url)
+            article.download()
+            article.parse()
+            article.nlp()
 
-    article.download()
-    article.parse()
-    article.nlp()
+            # -------- Author fallback --------
+            author = ", ".join(article.authors) if article.authors else None
+            if not author:
+                soup = BeautifulSoup(article.html, "html.parser")
+                meta_author = soup.find("meta", {"name": "author"})
+                if meta_author and meta_author.get("content"):
+                    author = meta_author.get("content")
+            author = author or "Not provided by source"
 
-    title.config(state='normal')
-    author.config(state='normal')
-    publication.config(state='normal')
-    summary.config(state='normal')
-    sentiment.config(state='normal')
+            publish_date = article.publish_date or "Not provided by source"
 
-    title.delete('1.0', "end")
-    title.insert('1.0', article.title)
+            analysis = TextBlob(article.text)
+            polarity = analysis.polarity
+            subjectivity = analysis.subjectivity
 
-    author.delete('1.0', "end")
-    author.insert('1.0', article.authors)
+            sentiment = (
+                "Positive" if polarity > 0 else
+                "Negative" if polarity < 0 else
+                "Neutral"
+            )
 
-    publication.delete('1.0', "end")
-    publication.insert('1.0', article.publish_date)
+            data = {
+                "title": article.title or "N/A",
+                "authors": author,
+                "date": publish_date,
+                "summary": article.summary or "Summary not available.",
+                "polarity": round(polarity, 2),
+                "subjectivity": round(subjectivity, 2),
+                "sentiment": sentiment
+            }
 
-    summary.delete('1.0', 'end')
-    summary.insert('1.0', article.summary)
+            # Store result temporarily in session-like redirect
+            return render_template("index.html", data=data)
 
-    analysis = TextBlob(article.text)
-    sentiment.delete('1.0', "end")
-    sentiment.insert('1.0', f'Polarity: {analysis.polarit},  Sentiment: {"positive" if analysis.polarity > 0 else "negative" if analysis.polarity < 0 else "neutral"}')
+        except Exception as e:
+            return render_template("index.html", data={"error": str(e)})
 
+    # -------- GET request (page load / reload) --------
+    return render_template("index.html", data={})
 
-    title.config(state='disabled')
-    author.config(state='disabled')
-    publication.config(state='disabled')
-    summary.config(state='disabled')
-    sentiment.config(state='disabled')
-
-
-root = tk.Tk()
-root.title("News Article Summarizer")
-root.geometry("1200x600")
-
-tlabel = tk.Label(root, text='Title')
-tlabel.pack()
-title=tk.Text(root, height=1, width=140)
-title.config(state='disabled', bg='#dddddd')
-title.pack()
-
-alabel = tk.Label(root, text='Author')
-alabel.pack()
-author=tk.Text(root, height=1, width=140)
-author.config(state='disabled', bg='#dddddd')
-author.pack()
-
-plabel = tk.Label(root, text='Publication Date')
-plabel.pack()
-publication=tk.Text(root, height=1, width=140)
-publication.config(state='disabled', bg='#dddddd')
-publication.pack()
-
-
-slabel = tk.Label(root, text='Summary')
-slabel.pack()
-summary=tk.Text(root, height=20, width=140)
-summary.config(state='disabled', bg='#dddddd')
-summary.pack()
-
-selabel = tk.Label(root, text="Sentiment Analysis")
-selabel.pack()
-sentiment = tk.Text(root, height=1, width=140)
-sentiment.config(state='disabled', bg='#dddddd')
-sentiment.pack()
-
-ulabel = tk.Label(root, text='URL')
-ulabel.pack()
-utext=tk.Text(root, height=1, width=140)
-utext.pack()
-
-btn = tk.Button(root, text="Summarize", command=summarize)
-btn.pack()
-
-
-
-
-root.mainloop()
-
+if __name__ == "__main__":
+    app.run(debug=True)

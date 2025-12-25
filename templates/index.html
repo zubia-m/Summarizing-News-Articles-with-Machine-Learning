@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>News Article Summarizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="card">
+    <h1>News Article Summarizer</h1>
+    <p class="subtitle">
+        Paste a news article URL to get an instant summary and sentiment analysis
+    </p>
+
+    <form method="POST">
+        <input
+            type="url"
+            name="url"
+            placeholder="Paste article URL here..."
+            required
+        >
+        <button type="submit">Summarize</button>
+    </form>
+
+    {% if data.error %}
+        <p class="error">{{ data.error }}</p>
+    {% endif %}
+
+    {% if data.title %}
+        <div class="result">
+            <h2>{{ data.title }}</h2>
+            <p class="meta">
+                <strong>Author:</strong> {{ data.authors or "N/A" }} |
+                <strong>Date:</strong> {{ data.date or "N/A" }}
+            </p>
+
+            <h3>Summary</h3>
+            <p>{{ data.summary }}</p>
+
+            <h3>Sentiment Analysis</h3>
+            <p>
+                Polarity: {{ data.polarity }},
+                Subjectivity: {{ data.subjectivity }},
+                <strong>{{ data.sentiment }}</strong>
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

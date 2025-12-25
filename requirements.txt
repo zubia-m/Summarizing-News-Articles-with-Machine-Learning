@@ -1,0 +1,6 @@
+flask
+textblob
+newspaper3k
+nltk
+lxml_html_clean
+beautifulsoup4
